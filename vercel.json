@@ -1,0 +1,23 @@
+{
+  "routes": [
+    { "src": "/", "dest": "/frontend/index.html" },
+    { "src": "/about", "dest": "/frontend/about.html" },
+    { "src": "/about.html", "dest": "/frontend/about.html" },
+    { "src": "/services", "dest": "/frontend/services.html" },
+    { "src": "/services.html", "dest": "/frontend/services.html" },
+    { "src": "/gallery", "dest": "/frontend/gallery.html" },
+    { "src": "/gallery.html", "dest": "/frontend/gallery.html" },
+    { "src": "/blog", "dest": "/frontend/blog.html" },
+    { "src": "/blog.html", "dest": "/frontend/blog.html" },
+    { "src": "/post", "dest": "/frontend/post.html" },
+    { "src": "/post.html", "dest": "/frontend/post.html" },
+    { "src": "/contact", "dest": "/frontend/contact.html" },
+    { "src": "/contact.html", "dest": "/frontend/contact.html" },
+    { "src": "/donation", "dest": "/frontend/donation.html" },
+    { "src": "/donation.html", "dest": "/frontend/donation.html" },
+    { "src": "/admin/login", "dest": "/frontend/admin/login.html" },
+    { "src": "/admin/login.html", "dest": "/frontend/admin/login.html" },
+    { "src": "/admin/dashboard", "dest": "/frontend/admin/dashboard.html" },
+    { "src": "/admin/dashboard.html", "dest": "/frontend/admin/dashboard.html" }
+  ]
+}
