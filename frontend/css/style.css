@@ -590,6 +590,10 @@ h1, h2, h3, h4 {
   font-family: Georgia, serif;
 }
 
+.brand-name {
+  font-size: 15px;
+}
+
 .footer-block h3 {
   font-size: 1.1rem;
   margin-bottom: 1rem;
