@@ -13,7 +13,7 @@ if (galleryGrid && galleryCardTemplate) {
         const image = card.querySelector('img');
         image.src = item.url;
         image.alt = item.filename || 'Photo from a SEWI community activity';
-        card.querySelector('h3').textContent = item.filename || 'Community moment';
+        card.querySelector('h3').textContent = item.caption || item.filename || 'Community moment';
         galleryGrid.append(card);
       });
     })

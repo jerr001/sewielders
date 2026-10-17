@@ -30,6 +30,17 @@ test('gallery uploads require an authenticated admin session', async () => {
   assert.match(res.body, /sign in as an administrator/i);
 });
 
+test('gallery caption edits and deletes require an authenticated admin session', async () => {
+  for (const method of ['PATCH', 'DELETE']) {
+    const req = Readable.from([]);
+    req.method = method;
+    req.headers = { host: 'example.test', origin: 'https://example.test' };
+    const res = response();
+    await gallery(req, res);
+    assert.equal(res.statusCode, 401);
+  }
+});
+
 test('admin login rejects invalid credentials', async () => {
   process.env.ADMIN_EMAIL = 'admin@example.test';
   process.env.ADMIN_PASSWORD_HASH = passwordHash('correct horse battery');
