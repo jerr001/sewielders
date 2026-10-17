@@ -1,6 +1,9 @@
 {
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1.js" },
+    { "src": "/css/(.*)", "dest": "/frontend/css/$1" },
+    { "src": "/js/(.*)", "dest": "/frontend/js/$1" },
+    { "src": "/assets/(.*)", "dest": "/frontend/assets/$1" },
     { "src": "/", "dest": "/frontend/index.html" },
     { "src": "/about", "dest": "/frontend/about.html" },
     { "src": "/about.html", "dest": "/frontend/about.html" },
