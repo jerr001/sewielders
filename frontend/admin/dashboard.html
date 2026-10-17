@@ -55,6 +55,10 @@
         gap: 20px;
       }
       .sidebar {
+        position: sticky;
+        top: 1rem;
+        align-self: start;
+        z-index: 5;
         background: #fff;
         border: 1px solid var(--border);
         border-radius: 20px;
@@ -73,6 +77,13 @@
       .sidebar a:hover {
         background: rgba(28,167,184,0.08);
       }
+      .sidebar a.active,
+      .sidebar a[aria-current="page"] {
+        color: #0e6975;
+        background: rgba(28,167,184,0.12);
+        box-shadow: inset 3px 0 0 var(--accent-strong);
+      }
+      .sidebar a:focus-visible { outline: 3px solid rgba(28,167,184,0.35); outline-offset: 2px; }
       .content {
         display: grid;
         gap: 1.5rem;
@@ -130,7 +141,7 @@
         .stats-grid {
           grid-template-columns: 1fr;
         }
-        .sidebar { padding: .6rem; }
+        .sidebar { top: .5rem; padding: .6rem; }
         .sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .sidebar a { padding: .7rem; text-align: center; }
         .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -146,6 +157,7 @@
         .admin-topbar-action { flex: 1; }
         .admin-topbar .brand-mark { display: none; }
         .admin-topbar .brand-name { font-size: .9rem; }
+        .sidebar { border-radius: 14px; box-shadow: 0 5px 16px rgba(15,54,60,.08); }
         .sidebar nav { grid-template-columns: 1fr 1fr; }
         .stats-grid { grid-template-columns: 1fr 1fr; gap: .6rem; }
         .stat-number { font-size: 1.5rem; }
@@ -177,10 +189,10 @@
       <div class="admin-grid">
         <aside class="sidebar">
           <nav aria-label="Admin navigation">
-            <a href="dashboard.html">Dashboard</a>
-            <a href="#">Blog</a>
-            <a href="#gallery-upload">Gallery</a>
-            <a href="#admin-settings">Settings</a>
+            <a href="dashboard.html" data-admin-menu="dashboard">Dashboard</a>
+            <a href="#" data-admin-menu="blog">Blog</a>
+            <a href="#gallery-upload" data-admin-menu="gallery">Gallery</a>
+            <a href="#admin-settings" data-admin-menu="settings">Settings</a>
           </nav>
         </aside>
 
@@ -264,6 +276,34 @@
       let selectedFiles = [];
       let previewUrls = [];
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const adminMenu = document.querySelector('.sidebar nav');
+      const adminMenuLinks = Array.from(adminMenu.querySelectorAll('[data-admin-menu]'));
+
+      function setActiveMenu(name) {
+        adminMenuLinks.forEach((link) => {
+          const active = link.dataset.adminMenu === name;
+          link.classList.toggle('active', active);
+          if (active) link.setAttribute('aria-current', 'page');
+          else link.removeAttribute('aria-current');
+        });
+      }
+
+      adminMenuLinks.forEach((link) => link.addEventListener('click', () => setActiveMenu(link.dataset.adminMenu)));
+      function updateActiveMenuOnScroll() {
+        const activeLine = window.innerHeight * 0.35;
+        let section = 'dashboard';
+        for (const [id, name] of [['gallery-upload', 'gallery'], ['admin-settings', 'settings']]) {
+          const target = document.getElementById(id);
+          const bounds = target.getBoundingClientRect();
+          if (bounds.top <= activeLine && bounds.bottom > activeLine) section = name;
+        }
+        setActiveMenu(section);
+      }
+      const initialMenu = location.hash === '#gallery-upload' ? 'gallery' : location.hash === '#admin-settings' ? 'settings' : 'dashboard';
+      setActiveMenu(initialMenu);
+      window.addEventListener('scroll', updateActiveMenuOnScroll, { passive: true });
+      window.addEventListener('hashchange', updateActiveMenuOnScroll);
+      updateActiveMenuOnScroll();
 
       async function initializeDashboard() {
         const response = await fetch('/api/admin-session', { credentials: 'same-origin' });
