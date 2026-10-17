@@ -70,7 +70,7 @@
               <div class="contact-icon">☎</div>
               <div>
                 <strong>Phone</strong><br />
-                +234(802)-553-1947
+                <span data-site-setting="phonePrimary">+234(802)-553-1947</span>
               </div>
             </div>
 
@@ -78,7 +78,7 @@
               <div class="contact-icon">✉</div>
               <div>
                 <strong>Email</strong><br />
-                info@sewielders.org
+                <span data-site-setting="email">info@sewielders.org</span>
               </div>
             </div>
 
@@ -86,40 +86,47 @@
               <div class="contact-icon">⌂</div>
               <div>
                 <strong>Address</strong><br />
-                53 Lagos Street, Off Liasu Road, Lagos, Nigeria
+                <span data-site-setting="headOffice">Head Office: 53 Juba Alaro Street, Off Liasu Road, Egbe, Lagos
+                  <br>Branch: Umuokwu Village, Alor, Anambra State
+                </span>
               </div>
             </div>
           </div>
 
           <div class="card">
-            <form class="contact-form" action="#" method="post">
+            <form class="contact-form" id="contact-form" action="#" method="post">
+              <div aria-hidden="true" style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;">
+                <label for="website">Leave this field empty</label>
+                <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
+              </div>
               <div class="form-row">
                 <div class="field">
                   <label for="first-name">First name</label>
-                  <input id="first-name" name="first-name" type="text" placeholder="First name" />
+                  <input id="first-name" name="firstName" type="text" placeholder="First name" maxlength="80" required />
                 </div>
                 <div class="field">
                   <label for="last-name">Last name</label>
-                  <input id="last-name" name="last-name" type="text" placeholder="Last name" />
+                  <input id="last-name" name="lastName" type="text" placeholder="Last name" maxlength="80" required />
                 </div>
               </div>
 
               <div class="field">
                 <label for="email">Email address</label>
-                <input id="email" name="email" type="email" placeholder="Email address" />
+                <input id="email" name="email" type="email" placeholder="Email address" maxlength="254" required />
               </div>
 
               <div class="field">
                 <label for="subject">Subject</label>
-                <input id="subject" name="subject" type="text" placeholder="How can we help?" />
+                <input id="subject" name="subject" type="text" placeholder="How can we help?" maxlength="160" required />
               </div>
 
               <div class="field">
                 <label for="message">Message</label>
-                <textarea id="message" name="message" placeholder="Tell us more about your needs or enquiry..."></textarea>
+                <textarea id="message" name="message" placeholder="Tell us more about your needs or enquiry..." maxlength="5000" required></textarea>
               </div>
 
-              <button type="submit" class="primary-btn">Send message</button>
+              <button type="submit" class="primary-btn" id="contact-submit">Send message</button>
+              <p id="contact-status" class="contact-status" role="status" aria-live="polite"></p>
             </form>
           </div>
         </div>
@@ -151,9 +158,9 @@
             <h3>Contact</h3>
             <ul class="footer-list">
               <li>+234(802)-553-1947</li>
-              <li>info@sewielders.org</li>
-              <li>Head Office: 53 Juba Alaro Street, Off Liasu Road, Egbe, Lagos</li>
-              <li>Branch: Umuokwu Village, Alor, Anambra State</li>
+              <li data-site-setting="email">info@sewielders.org</li>
+              <li data-site-setting="headOffice">Head Office: 53 Juba Alaro Street, Off Liasu Road, Egbe, Lagos</li>
+              <li data-site-setting="branchOffice">Branch: Umuokwu Village, Alor, Anambra State</li>
             </ul>
           </div>
 
@@ -171,6 +178,8 @@
       </div>
     </footer>
 
+    <script src="js/site-settings.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/contact.js"></script>
   </body>
 </html>

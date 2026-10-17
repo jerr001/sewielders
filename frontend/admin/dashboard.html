@@ -83,6 +83,13 @@
       .image-actions button { flex: 1 1 110px; }
       .delete-photo { border: 1px solid #c66; color: #9a2424; background: #fff; border-radius: 8px; padding: .6rem .7rem; cursor: pointer; font-weight: 700; }
       .admin-shell, .admin-grid, .content, .card { min-width: 0; }
+      .settings-form { display: grid; gap: 1rem; max-width: 760px; }
+      .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+      .settings-field { display: grid; gap: .4rem; }
+      .settings-field input { width: 100%; min-width: 0; padding: .75rem; border: 1px solid var(--border); border-radius: 9px; font: inherit; }
+      .settings-message { min-height: 1.5em; }
+      .settings-message.error { color: #a32626; }
+      .settings-message.success { color: #176b3a; }
       @media (max-width: 820px) {
         .admin-shell { margin: 1rem auto; padding: 0 14px 28px; }
         .admin-topbar { align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
@@ -100,6 +107,7 @@
         .stat-card { padding: .9rem; }
         .upload-dropzone { padding: 1rem; }
         .upload-actions > button { flex: 1 1 180px; }
+        .settings-grid { grid-template-columns: 1fr; }
       }
       @media (max-width: 480px) {
         .admin-shell { padding-right: 10px; padding-left: 10px; }
@@ -122,7 +130,10 @@
           <span class="brand-mark">S</span>
           <span class="brand-name"><strong>SUPPORT TO THE ELDERLY AND WEAK INITIATIVE (SEWI CARE HOME)</strong></span>
         </div>
-        <button class="ghost-btn" id="admin-logout" type="button">Logout</button>
+        <div class="image-actions">
+          <a class="ghost-btn" href="/">View homepage</a>
+          <button class="ghost-btn" id="admin-logout" type="button">Logout</button>
+        </div>
       </div>
 
       <div class="admin-grid">
@@ -131,7 +142,7 @@
             <a href="dashboard.html">Dashboard</a>
             <a href="#">Blog</a>
             <a href="#gallery-upload">Gallery</a>
-            <a href="#">Settings</a>
+            <a href="#admin-settings">Settings</a>
           </nav>
         </aside>
 
@@ -156,6 +167,21 @@
               <h2>Uploaded photos</h2>
               <div class="uploaded-gallery" id="uploaded-gallery" aria-live="polite"></div>
             </div>
+          </section>
+          <section class="card" id="admin-settings">
+            <h2>Website settings</h2>
+            <p>Update the contact details shown on the public website.</p>
+            <form class="settings-form" id="site-settings-form">
+              <div class="settings-grid">
+                <label class="settings-field">Main phone number<input name="phonePrimary" type="text" maxlength="254" required /></label>
+                <label class="settings-field">Second phone number<input name="phoneSecondary" type="text" maxlength="254" /></label>
+                <label class="settings-field">Contact email<input name="email" type="email" maxlength="254" required /></label>
+                <label class="settings-field">Head office address<input name="headOffice" type="text" maxlength="300" required /></label>
+                <label class="settings-field">Branch address<input name="branchOffice" type="text" maxlength="300" /></label>
+              </div>
+              <button class="primary-btn" id="save-site-settings" type="submit">Save settings</button>
+              <p class="settings-message" id="settings-message" role="status" aria-live="polite"></p>
+            </form>
           </section>
           <section class="stats-grid">
             <article class="stat-card">
@@ -195,6 +221,8 @@
       const uploadMessage = document.getElementById('upload-message');
       const uploadProgress = document.getElementById('upload-progress');
       const uploadedGallery = document.getElementById('uploaded-gallery');
+      const settingsForm = document.getElementById('site-settings-form');
+      const settingsMessage = document.getElementById('settings-message');
       let selectedFiles = [];
       let previewUrls = [];
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -203,6 +231,7 @@
         const response = await fetch('/api/admin-session', { credentials: 'same-origin' });
         const result = await response.json();
         if (!result.authenticated) window.location.replace('login.html');
+        else await loadSiteSettings();
       }
       initializeDashboard().catch(() => window.location.replace('login.html'));
 
@@ -210,6 +239,41 @@
         uploadMessage.textContent = text;
         uploadMessage.className = `upload-message ${kind}`;
       }
+      async function loadSiteSettings() {
+        try {
+          const response = await fetch('/api/admin-settings', { credentials: 'same-origin' });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Could not load settings.');
+          for (const [key, value] of Object.entries(result.settings)) {
+            if (settingsForm.elements[key]) settingsForm.elements[key].value = value;
+          }
+        } catch (error) {
+          settingsMessage.textContent = error.message;
+          settingsMessage.className = 'settings-message error';
+        }
+      }
+      settingsForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = document.getElementById('save-site-settings');
+        button.disabled = true;
+        settingsMessage.textContent = 'Saving…';
+        settingsMessage.className = 'settings-message';
+        const settings = Object.fromEntries(new FormData(settingsForm).entries());
+        try {
+          const response = await fetch('/api/admin-settings', {
+            method: 'PUT', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Could not save settings.');
+          settingsMessage.textContent = 'Settings saved. Refresh the public website to see the updates.';
+          settingsMessage.className = 'settings-message success';
+        } catch (error) {
+          settingsMessage.textContent = error.message;
+          settingsMessage.className = 'settings-message error';
+        } finally { button.disabled = false; }
+      });
       function renderPreviews() {
         previewUrls.forEach(URL.revokeObjectURL);
         previewUrls = [];

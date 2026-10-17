@@ -681,6 +681,14 @@ h1, h2, h3, h4 {
   gap: 1rem;
 }
 
+.contact-status {
+  min-height: 1.4em;
+  margin: 0;
+}
+
+.contact-status.error { color: #a32626; }
+.contact-status.success { color: #176b3a; }
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
