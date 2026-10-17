@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Dashboard | Support to the Elderly and Weak Initiative (SEWI Home Care)</title>
+    <title>Admin Dashboard | Support to the Elderly and Weak Initiative (SEWI CARE HOME)</title>
     <link rel="stylesheet" href="../css/style.css" />
     <style>
       body {
@@ -64,6 +64,18 @@
         font-weight: 800;
         color: var(--accent-strong);
       }
+      .gallery-upload { display: grid; gap: 1rem; }
+      .upload-dropzone { border: 2px dashed var(--border); border-radius: 16px; padding: 1.5rem; text-align: center; background: #fff; }
+      .upload-dropzone.dragging { border-color: var(--accent-strong); background: rgba(28,167,184,0.08); }
+      .upload-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+      .upload-previews, .uploaded-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .8rem; }
+      .upload-preview, .uploaded-image { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: .6rem; min-width: 0; }
+      .upload-preview img, .uploaded-image img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; display: block; }
+      .upload-preview p, .uploaded-image p { overflow-wrap: anywhere; font-size: .85rem; margin: .45rem 0; }
+      .remove-photo { border: 0; color: #9a2424; background: transparent; cursor: pointer; padding: .25rem 0; font-weight: 700; }
+      .upload-message { min-height: 1.5em; }
+      .upload-message.error { color: #a32626; }
+      .upload-message.success { color: #176b3a; }
       @media (max-width: 820px) {
         .admin-grid,
         .stats-grid {
@@ -77,9 +89,9 @@
       <div class="admin-topbar">
         <div class="brand">
           <span class="brand-mark">S</span>
-          <span class="brand-name"><strong>SUPPORT TO THE ELDERLY AND WEAK INITIATIVE (SEWI HOME CARE)</strong></span>
+          <span class="brand-name"><strong>SUPPORT TO THE ELDERLY AND WEAK INITIATIVE (SEWI CARE HOME)</strong></span>
         </div>
-        <a class="ghost-btn" href="login.html">Logout</a>
+        <button class="ghost-btn" id="admin-logout" type="button">Logout</button>
       </div>
 
       <div class="admin-grid">
@@ -87,12 +99,33 @@
           <nav aria-label="Admin navigation">
             <a href="dashboard.html">Dashboard</a>
             <a href="#">Blog</a>
-            <a href="#">Gallery</a>
+            <a href="#gallery-upload">Gallery</a>
             <a href="#">Settings</a>
           </nav>
         </aside>
 
         <main class="content">
+          <section class="card gallery-upload" id="gallery-upload">
+            <div>
+              <h1>Gallery</h1>
+              <p>Upload photos to your website's gallery.</p>
+            </div>
+            <div class="upload-dropzone" id="upload-dropzone">
+              <p>Choose one or more JPG, PNG, or WebP photos (up to 3 MB each; 4 MB total).</p>
+              <label class="primary-btn" for="photo-input">Choose Photos</label>
+              <input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden />
+            </div>
+            <div class="upload-previews" id="upload-previews" aria-live="polite"></div>
+            <div class="upload-actions">
+              <button class="primary-btn" id="upload-photos" type="button" disabled>Upload Photos</button>
+              <progress id="upload-progress" max="100" value="0" hidden aria-label="Upload progress"></progress>
+            </div>
+            <p class="upload-message" id="upload-message" role="status" aria-live="polite"></p>
+            <div>
+              <h2>Uploaded photos</h2>
+              <div class="uploaded-gallery" id="uploaded-gallery" aria-live="polite"></div>
+            </div>
+          </section>
           <section class="stats-grid">
             <article class="stat-card">
               <div class="stat-number">18</div>
@@ -123,5 +156,126 @@
         </main>
       </div>
     </div>
+    <script>
+      const fileInput = document.getElementById('photo-input');
+      const dropzone = document.getElementById('upload-dropzone');
+      const previewArea = document.getElementById('upload-previews');
+      const uploadButton = document.getElementById('upload-photos');
+      const uploadMessage = document.getElementById('upload-message');
+      const uploadProgress = document.getElementById('upload-progress');
+      const uploadedGallery = document.getElementById('uploaded-gallery');
+      let selectedFiles = [];
+      let previewUrls = [];
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+      async function initializeDashboard() {
+        const response = await fetch('/api/admin-session', { credentials: 'same-origin' });
+        const result = await response.json();
+        if (!result.authenticated) window.location.replace('login.html');
+      }
+      initializeDashboard().catch(() => window.location.replace('login.html'));
+
+      function showMessage(text, kind = '') {
+        uploadMessage.textContent = text;
+        uploadMessage.className = `upload-message ${kind}`;
+      }
+      function renderPreviews() {
+        previewUrls.forEach(URL.revokeObjectURL);
+        previewUrls = [];
+        previewArea.replaceChildren();
+        selectedFiles.forEach((file, index) => {
+          const card = document.createElement('article');
+          card.className = 'upload-preview';
+          const image = document.createElement('img');
+          image.alt = `Preview of ${file.name}`;
+          image.src = URL.createObjectURL(file);
+          previewUrls.push(image.src);
+          const filename = document.createElement('p');
+          filename.textContent = `${file.name} (${(file.size / 1048576).toFixed(2)} MB)`;
+          const remove = document.createElement('button');
+          remove.className = 'remove-photo';
+          remove.type = 'button';
+          remove.textContent = 'Remove';
+          remove.setAttribute('aria-label', `Remove ${file.name}`);
+          remove.addEventListener('click', () => { selectedFiles.splice(index, 1); renderPreviews(); });
+          card.append(image, filename, remove);
+          previewArea.append(card);
+        });
+        uploadButton.disabled = selectedFiles.length === 0;
+      }
+      function addFiles(files) {
+        const candidates = Array.from(files);
+        const invalid = candidates.find((file) => !allowedTypes.includes(file.type) || file.size > 3 * 1024 * 1024);
+        if (invalid) { showMessage(`${invalid.name} is unsupported or larger than 3 MB.`, 'error'); return; }
+        if (selectedFiles.length + candidates.length > 10) { showMessage('Choose no more than 10 photos at a time.', 'error'); return; }
+        if (selectedFiles.concat(candidates).reduce((sum, file) => sum + file.size, 0) > 4 * 1024 * 1024) {
+          showMessage('Selected photos must total 4 MB or less. Remove a photo or choose smaller files.', 'error'); return;
+        }
+        selectedFiles.push(...candidates);
+        showMessage('');
+        renderPreviews();
+      }
+      fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
+      ['dragenter', 'dragover'].forEach((name) => dropzone.addEventListener(name, (event) => { event.preventDefault(); dropzone.classList.add('dragging'); }));
+      ['dragleave', 'drop'].forEach((name) => dropzone.addEventListener(name, (event) => { event.preventDefault(); dropzone.classList.remove('dragging'); }));
+      dropzone.addEventListener('drop', (event) => addFiles(event.dataTransfer.files));
+
+      function renderUploaded(images) {
+        uploadedGallery.replaceChildren();
+        images.forEach((item) => {
+          const card = document.createElement('article');
+          card.className = 'uploaded-image';
+          const image = document.createElement('img');
+          image.src = item.url;
+          image.alt = item.filename || 'Gallery photo';
+          image.loading = 'lazy';
+          const name = document.createElement('p');
+          name.textContent = item.filename || 'Gallery photo';
+          card.append(image, name);
+          uploadedGallery.append(card);
+        });
+      }
+      async function loadUploaded() {
+        const response = await fetch('/api/gallery');
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not load uploaded photos.');
+        renderUploaded(result.images || []);
+      }
+      loadUploaded().catch((error) => showMessage(error.message, 'error'));
+
+      uploadButton.addEventListener('click', () => {
+        if (!selectedFiles.length) return;
+        uploadButton.disabled = true;
+        uploadProgress.hidden = false;
+        uploadProgress.value = 0;
+        showMessage('Uploading photos…');
+        const formData = new FormData();
+        selectedFiles.forEach((file) => formData.append('photos', file, file.name));
+        const request = new XMLHttpRequest();
+        request.open('POST', '/api/gallery');
+        request.upload.onprogress = (event) => { if (event.lengthComputable) uploadProgress.value = Math.round((event.loaded / event.total) * 100); };
+        request.onload = async () => {
+          let result;
+          try { result = JSON.parse(request.responseText); } catch (_) { result = {}; }
+          if (request.status < 200 || request.status >= 300) {
+            showMessage(result.error || 'Upload failed. Please try again.', 'error');
+          } else {
+            selectedFiles = [];
+            renderPreviews();
+            showMessage(`${result.uploaded.length} photo${result.uploaded.length === 1 ? '' : 's'} uploaded successfully.`, 'success');
+            try { await loadUploaded(); } catch (error) { showMessage(`Photos uploaded, but the list could not refresh: ${error.message}`, 'error'); }
+          }
+          uploadProgress.hidden = true;
+          uploadButton.disabled = selectedFiles.length === 0;
+        };
+        request.onerror = () => { showMessage('Upload failed because of a network error.', 'error'); uploadProgress.hidden = true; uploadButton.disabled = selectedFiles.length === 0; };
+        request.send(formData);
+      });
+
+      document.getElementById('admin-logout').addEventListener('click', async () => {
+        await fetch('/api/admin-logout', { method: 'POST', credentials: 'same-origin' });
+        window.location.replace('login.html');
+      });
+    </script>
   </body>
 </html>

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Login | Support to the Elderly and Weak Initiative (SEWI Home Care)</title>
+    <title>Admin Login | Support to the Elderly and Weak Initiative (SEWI CARE HOME)</title>
     <link rel="stylesheet" href="../css/style.css" />
     <style>
       body {
@@ -32,24 +32,48 @@
         display: flex;
         justify-content: center;
       }
+      .login-message { min-height: 1.5em; color: #a32626; text-align: center; }
     </style>
   </head>
   <body>
     <main class="login-shell">
       <h1>Admin Login</h1>
-      <form class="login-form" action="dashboard.html" method="get">
+      <form class="login-form" id="admin-login-form">
         <div class="field">
           <label for="email">Email</label>
-          <input id="email" type="email" placeholder="Enter your email" />
+          <input id="email" name="email" type="email" autocomplete="username" placeholder="Enter your email" required />
         </div>
         <div class="field">
           <label for="password">Password</label>
-          <input id="password" type="password" placeholder="Enter your password" />
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required />
         </div>
         <div class="login-actions">
           <button class="primary-btn" type="submit">Login</button>
         </div>
+        <p id="login-message" class="login-message" role="status" aria-live="polite"></p>
       </form>
     </main>
+    <script>
+      const loginForm = document.getElementById('admin-login-form');
+      const loginMessage = document.getElementById('login-message');
+      loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = loginForm.querySelector('button[type="submit"]');
+        button.disabled = true;
+        loginMessage.textContent = 'Signing in…';
+        try {
+          const response = await fetch('/api/admin-login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: loginForm.email.value, password: loginForm.password.value })
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Unable to sign in.');
+          window.location.href = 'dashboard.html';
+        } catch (error) {
+          loginMessage.textContent = error.message || 'Unable to sign in. Please try again.';
+          button.disabled = false;
+        }
+      });
+    </script>
   </body>
 </html>
