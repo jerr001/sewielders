@@ -78,6 +78,7 @@
       .upload-message.success { color: #176b3a; }
       .uploaded-image { display: grid; align-content: start; gap: .55rem; }
       .caption-input { width: 100%; min-width: 0; padding: .7rem; border: 1px solid var(--border); border-radius: 9px; font: inherit; }
+      .replace-input { width: 100%; min-width: 0; font: inherit; font-size: .85rem; }
       .image-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
       .image-actions button { flex: 1 1 110px; }
       .delete-photo { border: 1px solid #c66; color: #9a2424; background: #fff; border-radius: 8px; padding: .6rem .7rem; cursor: pointer; font-weight: 700; }
@@ -277,20 +278,50 @@
           captionInput.placeholder = 'Add a caption';
           captionInput.value = item.caption || '';
           captionInput.setAttribute('aria-label', `Caption for ${item.filename || 'gallery photo'}`);
+          const replaceInput = document.createElement('input');
+          replaceInput.className = 'replace-input';
+          replaceInput.type = 'file';
+          replaceInput.accept = 'image/jpeg,image/png,image/webp';
+          replaceInput.setAttribute('aria-label', `Choose a replacement for ${item.filename || 'gallery photo'}`);
+          let previewUrl = '';
+          replaceInput.addEventListener('change', () => {
+            const file = replaceInput.files[0];
+            if (!file) return;
+            if (!allowedTypes.includes(file.type) || file.size > 3 * 1024 * 1024) {
+              replaceInput.value = '';
+              showMessage('Choose a JPG, PNG, or WebP photo smaller than 3 MB.', 'error');
+              return;
+            }
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            previewUrl = URL.createObjectURL(file);
+            image.src = previewUrl;
+            showMessage('');
+          });
           const actions = document.createElement('div');
           actions.className = 'image-actions';
           const save = document.createElement('button');
           save.type = 'button';
           save.className = 'primary-btn';
-          save.textContent = 'Save caption';
+          save.textContent = 'Save changes';
           save.addEventListener('click', async () => {
             save.disabled = true;
             try {
-              const response = await fetch('/api/gallery', { method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: item.url, caption: captionInput.value }) });
+              const formData = new FormData();
+              formData.append('url', item.url);
+              formData.append('caption', captionInput.value);
+              if (replaceInput.files[0]) formData.append('photo', replaceInput.files[0], replaceInput.files[0].name);
+              const response = await fetch('/api/gallery', { method: 'PUT', credentials: 'same-origin', body: formData });
               const result = await response.json();
-              if (!response.ok) throw new Error(result.error || 'Could not save caption.');
-              item.caption = result.image.caption;
-              showMessage('Caption saved.', 'success');
+              if (!response.ok) throw new Error(result.error || 'Could not save changes.');
+              Object.assign(item, result.image);
+              image.src = item.url;
+              image.alt = item.filename || 'Gallery photo';
+              name.textContent = item.filename || 'Gallery photo';
+              captionInput.value = item.caption || '';
+              replaceInput.value = '';
+              if (previewUrl) URL.revokeObjectURL(previewUrl);
+              previewUrl = '';
+              showMessage('Gallery photo updated.', 'success');
             } catch (error) { showMessage(error.message, 'error'); }
             finally { save.disabled = false; }
           });
@@ -310,7 +341,7 @@
             } catch (error) { showMessage(error.message, 'error'); remove.disabled = false; }
           });
           actions.append(save, remove);
-          card.append(image, name, captionInput, actions);
+          card.append(image, name, captionInput, replaceInput, actions);
           uploadedGallery.append(card);
         });
       }

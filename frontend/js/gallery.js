@@ -8,6 +8,7 @@ if (galleryGrid && galleryCardTemplate) {
       return response.json();
     })
     .then(({ images }) => {
+      galleryGrid.querySelectorAll('[data-gallery-starter]').forEach((card) => card.remove());
       (images || []).forEach((item) => {
         const card = galleryCardTemplate.content.cloneNode(true);
         const image = card.querySelector('img');

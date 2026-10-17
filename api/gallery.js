@@ -14,6 +14,14 @@ const upload = multer({
     return callback(null, true);
   }
 }).array('photos', MAX_IMAGES);
+const replaceUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { files: 1, fileSize: MAX_FILE_BYTES, fieldSize: 2048, fields: 2, parts: 3 },
+  fileFilter: (_req, file, callback) => {
+    if (!allowedTypes.has(file.mimetype)) return callback(new Error('Unsupported image type'));
+    return callback(null, true);
+  }
+}).single('photo');
 
 module.exports.config = { api: { bodyParser: false, sizeLimit: '4.4mb' } };
 
@@ -62,8 +70,8 @@ function adminMutation(req, res, action) {
         await collection.updateOne({ url }, { $set: { caption } });
         return sendJson(res, 200, { image: publicImage({ ...record, caption }) });
       }
-      // Remove the original uploaded file before deleting its database entry.
-      await del(record.url);
+      // Starter gallery images are external URLs; only remove files stored in Blob.
+      if (record.pathname) await del(record.url);
       await collection.deleteOne({ url });
       return sendJson(res, 200, { deleted: true });
     } catch (error) {
@@ -71,6 +79,59 @@ function adminMutation(req, res, action) {
       return sendJson(res, error.status || 502, { error: 'The gallery could not be updated. Please try again.' });
     }
   })();
+}
+
+function replaceGalleryImage(req, res) {
+  if (!isAuthorized(req)) return sendJson(res, 401, { error: 'Please sign in as an administrator.' });
+  if (!sameOrigin(req)) return sendJson(res, 403, { error: 'Request origin was rejected' });
+  return replaceUpload(req, res, async (error) => {
+    if (error) {
+      const tooLarge = error.code === 'LIMIT_FILE_SIZE';
+      return sendJson(res, tooLarge ? 413 : 400, { error: tooLarge ? 'The replacement photo must be 3 MB or smaller.' : 'Choose a JPG, PNG, or WebP image.' });
+    }
+
+    const url = typeof req.body?.url === 'string' ? req.body.url : '';
+    const caption = cleanCaption(req.body?.caption);
+    if (!url) return sendJson(res, 400, { error: 'The gallery photo could not be identified.' });
+    if (req.file && imageType(req.file.buffer) !== req.file.mimetype) {
+      return sendJson(res, 400, { error: 'The replacement file is not a valid JPG, PNG, or WebP image.' });
+    }
+
+    let replacementBlob;
+    try {
+      const collection = await galleryCollection();
+      const existing = await collection.findOne({ url });
+      if (!existing) return sendJson(res, 404, { error: 'That gallery photo could not be found.' });
+
+      const changes = { caption };
+      if (req.file) {
+        const extension = req.file.mimetype === 'image/jpeg' ? 'jpg' : req.file.mimetype.slice(6);
+        replacementBlob = await put(`gallery/${cryptoRandomName()}.${extension}`, req.file.buffer, {
+          access: 'public', contentType: req.file.mimetype, addRandomSuffix: false
+        });
+        Object.assign(changes, {
+          url: replacementBlob.url,
+          pathname: replacementBlob.pathname,
+          filename: cleanFilename(req.file.originalname),
+          contentType: req.file.mimetype,
+          size: req.file.size
+        });
+      }
+
+      await collection.updateOne({ url }, { $set: changes });
+      if (replacementBlob && existing.pathname) {
+        try { await del(existing.url); }
+        catch (cleanupError) { console.error('[gallery] old image cleanup failed:', cleanupError); }
+      }
+      return sendJson(res, 200, { image: publicImage({ ...existing, ...changes }) });
+    } catch (saveError) {
+      console.error('[gallery] edit failed:', saveError);
+      if (replacementBlob) {
+        try { await del(replacementBlob.url); } catch (_) { /* best effort cleanup */ }
+      }
+      return sendJson(res, 502, { error: 'The gallery photo could not be updated. Please try again.' });
+    }
+  });
 }
 
 module.exports = async (req, res) => {
@@ -86,6 +147,7 @@ module.exports = async (req, res) => {
       return sendJson(res, 503, { error: message });
     }
   }
+  if (req.method === 'PUT') return replaceGalleryImage(req, res);
   if (req.method === 'PATCH') return adminMutation(req, res, 'caption');
   if (req.method === 'DELETE') return adminMutation(req, res, 'delete');
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
